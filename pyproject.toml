@@ -1,0 +1,107 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lybrary"
+version = "0.1.0"
+description = "Living structure-aware code memory for AI coding agents"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [
+    { name = "lybrary contributors" }
+]
+keywords = ["code", "rag", "ast", "mcp", "agent", "memory", "indexing"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    # CLI + display
+    "typer[all]>=0.12.0,<1.0.0",
+    "rich>=13.7.0,<14.0.0",
+    # AST parsing — tree-sitter had breaking API changes at 0.22; pin to that minor series
+    "tree-sitter>=0.24.0,<0.26.0",
+    "tree-sitter-python>=0.21.0,<1.0.0",
+    "tree-sitter-javascript>=0.21.0,<1.0.0",
+    "tree-sitter-typescript>=0.21.0,<1.0.0",
+    "tree-sitter-go>=0.21.0,<1.0.0",
+    "tree-sitter-rust>=0.21.0,<1.0.0",
+    "tree-sitter-java>=0.21.0,<1.0.0",
+    "tree-sitter-c>=0.21.0,<1.0.0",
+    "tree-sitter-cpp>=0.22.0,<1.0.0",
+    # File watching
+    "watchdog>=4.0.0,<6.0.0",
+    # Embeddings — fastembed uses ONNX Runtime, no torch required (~50MB vs ~700MB)
+    "fastembed>=0.4.0,<2.0.0",
+    "numpy>=1.26.0,<3.0.0",
+    # Config + validation
+    "pydantic>=2.6.0,<3.0.0",
+    "pydantic-settings>=2.2.0,<3.0.0",
+    "tomli-w>=1.0.0,<2.0.0",
+    # Utilities
+    "pathspec>=0.12.0,<1.0.0",
+    "xxhash>=3.4.0,<4.0.0",
+    # MCP server (required for agent integration — the core use-case)
+    "mcp>=1.0.0,<2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0,<9.0.0",
+    "pytest-asyncio>=0.23.0,<1.0.0",
+    "ruff>=0.4.0,<1.0.0",
+]
+
+[project.scripts]
+lybrary = "lybrary.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["lybrary"]
+
+# py.typed is a zero-byte marker that tells type checkers this package
+# ships its own type annotations (PEP 561).
+[tool.hatch.build.targets.wheel.sources]
+"lybrary/py.typed" = "lybrary/py.typed"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.bumpversion]
+current_version = "0.1.0"
+commit = true
+tag = true
+tag_name = "v{new_version}"
+message = "chore: bump version {current_version} → {new_version}"
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "lybrary/__init__.py"
+search = '__version__ = "{current_version}"'
+replace = '__version__ = "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "CHANGELOG.md"
+search = "## [Unreleased]"
+replace = "## [Unreleased]\n\n## [{new_version}] — {now:%Y-%m-%d}"

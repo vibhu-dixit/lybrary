@@ -1,0 +1,44 @@
+name: Release to PyPI
+
+on:
+  push:
+    tags:
+      - "v*.*.*"   # triggers on v0.1.1, v0.2.0, v1.0.0, etc.
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    environment: release          # optional: add approval gate in GitHub settings
+    permissions:
+      contents: write             # needed to create GitHub Release
+      id-token: write             # needed for PyPI trusted publishing
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: pip install build
+
+      - name: Build distribution
+        run: python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # Uses PyPI Trusted Publishing (OIDC) — no API token needed in secrets.
+        # Set it up once at: https://pypi.org/manage/project/lybrary/settings/publishing/
+        # Add a publisher: owner=<your-github-username> repo=lybrary workflow=release.yml
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true   # auto-fills from commit messages

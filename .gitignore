@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+wheels/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.xml
+
+# Type checking
+.mypy_cache/
+.pyright/
+
+# lybrary runtime data — never commit a repo's index
+.lybrary/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.DS_Store
+
+# Distribution / packaging
+MANIFEST
+pip-wheel-metadata/
+share/python-wheels/
+*.dist-info/
+
+# Logs
+*.log

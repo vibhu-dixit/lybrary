@@ -12,10 +12,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+# NumPy's first import can block inside an MCP request on Windows; load it at startup.
+from lybrary.indexer.store import IndexStore
 
 # ---------------------------------------------------------------------------
 # Server init
@@ -91,7 +94,7 @@ class QueryInput(BaseModel):
         ge=100,
         le=32000,
     )
-    repo_root: Optional[str] = Field(
+    repo_root: str | None = Field(
         default=None,
         description="Absolute path to the repository root. "
         "Omit to auto-detect from the current working directory.",
@@ -110,7 +113,7 @@ class StatusInput(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    repo_root: Optional[str] = Field(
+    repo_root: str | None = Field(
         default=None,
         description="Absolute path to the repository root. Omit to auto-detect.",
     )
@@ -121,7 +124,7 @@ class UpdateInput(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    repo_root: Optional[str] = Field(
+    repo_root: str | None = Field(
         default=None,
         description="Absolute path to the repository root. Omit to auto-detect.",
     )
@@ -130,7 +133,7 @@ class UpdateInput(BaseModel):
         description="When true, drop and rebuild the entire index. "
         "When false (default), only re-index changed files.",
     )
-    paths: Optional[list[str]] = Field(
+    paths: list[str] | None = Field(
         default=None,
         description="Optional list of specific relative file paths to re-index. "
         "When provided, only these files are updated regardless of 'full'.",
@@ -292,12 +295,18 @@ async def memory_update(params: UpdateInput) -> str:
 
         On error: {"error": "<message>"}
     """
+    store = None
     try:
         root = _resolve_root(params.repo_root)
 
-        from lybrary.config import LybraryConfig
-        from lybrary.indexer.store import IndexStore
+        if params.paths:
+            for rel in params.paths:
+                try:
+                    (root / rel).resolve().relative_to(root.resolve())
+                except ValueError as e:
+                    raise ValueError(f"path outside repository: {rel}") from e
 
+        from lybrary.config import LybraryConfig
         config = LybraryConfig.load(root)
         store = IndexStore(root)
 
@@ -356,6 +365,9 @@ async def memory_update(params: UpdateInput) -> str:
 
     except Exception as e:
         return json.dumps({"error": str(e)})
+    finally:
+        if store is not None:
+            store.close()
 
 
 # ---------------------------------------------------------------------------

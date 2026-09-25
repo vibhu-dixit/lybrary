@@ -9,8 +9,8 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 
 from lybrary.config import LybraryConfig
+from lybrary.utils import content_hash
 from lybrary.watcher import LybraryHandler
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -176,7 +176,7 @@ def test_update_file_reads_and_indexes(tmp_path):
     fake_chunk.embedding_text.return_value = "def hello(): pass"
 
     with (
-        patch("lybrary.watcher.chunk_file", return_value=[fake_chunk]) as mock_chunk,
+        patch("lybrary.watcher.chunk_source", return_value=[fake_chunk]) as mock_chunk,
         patch("lybrary.watcher.content_hash", return_value="deadbeef") as mock_hash,
     ):
         handler._update_file("module.py")
@@ -193,7 +193,29 @@ def test_update_file_no_chunks_skips_upsert(tmp_path):
     src = tmp_path / "empty.py"
     src.write_text("")
 
-    with patch("lybrary.watcher.chunk_file", return_value=[]):
+    with patch("lybrary.watcher.chunk_source", return_value=[]):
         handler._update_file("empty.py")
 
     handler.store.upsert_chunks.assert_not_called()
+
+
+def test_watcher_ignores_gitignored_source(tmp_path):
+    (tmp_path / ".gitignore").write_text("generated/\n")
+    handler = _make_handler(tmp_path)
+    path = tmp_path / "generated" / "code.py"
+    path.parent.mkdir()
+    path.write_text("def hidden(): pass")
+    handler.on_any_event(_event(str(path)))
+    assert handler._pending == {}
+
+
+def test_update_uses_same_snapshot_for_chunks_and_hash(tmp_path):
+    handler = _make_handler(tmp_path)
+    path = tmp_path / "module.py"
+    path.write_text("def original(): pass\n")
+    with patch("lybrary.watcher.chunk_source", return_value=[MagicMock()]) as chunk:
+        handler._update_file("module.py")
+    assert chunk.call_args.args[0] == path.read_bytes().decode("utf-8")
+    assert handler.store.save_hashes.call_args.args[0]["module.py"] == content_hash(
+        path.read_bytes()
+    )

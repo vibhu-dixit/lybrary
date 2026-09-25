@@ -9,6 +9,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.2.0] — 2026-09-24
+
+### Added
+- Documented one-time Codex and Claude Code MCP registration and per-folder `lybrary start` setup.
+- Added tests for MCP path handling, daemon status, and incremental indexing.
+
+### Fixed
+- Corrected Windows daemon process detection and stop error reporting.
+- Opened index stores read-only for status and queries, and closed MCP update stores reliably.
+- Rejected MCP update paths outside the repository.
+- Fixed watcher handling of ignored files, empty chunks, and file changes during indexing.
+- Corrected query scoring and bounded the amount of intermediate search content.
+
+---
+
 ## [0.1.0] — 2026-08-07
 
 ### Added

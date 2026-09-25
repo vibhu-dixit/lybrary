@@ -6,17 +6,17 @@ import time
 from pathlib import Path
 
 from watchdog.events import (
-    FileSystemEventHandler,
-    FileSystemEvent,
     FileMovedEvent,
+    FileSystemEvent,
+    FileSystemEventHandler,
 )
 from watchdog.observers import Observer
 
 from lybrary.config import LybraryConfig
-from lybrary.indexer.ast_chunker import detect_language
+from lybrary.indexer.ast_chunker import chunk_source, detect_language
 from lybrary.indexer.embedder import Embedder
 from lybrary.indexer.store import IndexStore
-from lybrary.indexer.ast_chunker import chunk_file
+from lybrary.indexer.walker import _build_spec
 from lybrary.utils import content_hash, relative_to_root
 
 
@@ -31,6 +31,7 @@ class LybraryHandler(FileSystemEventHandler):
         # Fix #7: track old paths from move events so we can delete them
         self._moved_from: set[str] = set()
         self.debounce = config.daemon.debounce_ms / 1000.0
+        self._ignore = _build_spec(root, config)
 
     def _enqueue(self, path: Path) -> None:
         """Add a source file to the pending update queue."""
@@ -43,6 +44,8 @@ class LybraryHandler(FileSystemEventHandler):
         except Exception:
             return
         rel = relative_to_root(path, self.root)
+        if self._ignore.match_file(rel.replace("\\", "/")):
+            return
         self._pending[rel] = time.time()
 
     def on_any_event(self, event: FileSystemEvent) -> None:
@@ -100,13 +103,18 @@ class LybraryHandler(FileSystemEventHandler):
             raw_bytes = path.read_bytes()
             source = raw_bytes.decode("utf-8", errors="replace")
 
-            chunks = chunk_file(
-                path,
-                self.root,
+            chunks = chunk_source(
+                source,
+                rel,
+                detect_language(path),
                 soft_max_tokens=self.config.chunk.soft_max_tokens,
                 min_chunk_tokens=self.config.chunk.min_chunk_tokens,
             )
             if not chunks:
+                self.store.delete_path(rel)
+                hashes = self.store.load_hashes()
+                hashes[rel] = content_hash(raw_bytes)
+                self.store.save_hashes(hashes)
                 return
             texts = [c.embedding_text() for c in chunks]
             vectors = self.embedder.embed(texts, batch_size=self.config.embed.batch_size)
@@ -116,7 +124,7 @@ class LybraryHandler(FileSystemEventHandler):
             hashes = self.store.load_hashes()
             hashes[rel] = content_hash(raw_bytes)
             self.store.save_hashes(hashes)
-            print(f"[watch] {rel} → {len(chunks)} chunks", flush=True)
+            print(f"[watch] {rel} -> {len(chunks)} chunks", flush=True)
         except Exception as e:
             print(f"[watch] error on {rel}: {e}", flush=True)
 

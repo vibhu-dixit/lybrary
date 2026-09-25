@@ -33,7 +33,7 @@ import numpy as np
 
 from lybrary.config import get_lybrary_dir
 from lybrary.indexer.ast_chunker import CodeChunk
-from lybrary.utils import content_hash, ensure_dir
+from lybrary.utils import ensure_dir
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS chunks (
@@ -69,17 +69,22 @@ def _blob_to_vec(blob: bytes) -> np.ndarray:
 class IndexStore:
     """SQLite-backed store for code chunks + embeddings."""
 
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, read_only: bool = False):
         self.root = root.resolve()
         self.ly_dir = get_lybrary_dir(self.root)
-        ensure_dir(self.ly_dir)
+        self.read_only = read_only
+        if not read_only:
+            ensure_dir(self.ly_dir)
         self.db_path = self.ly_dir / "index.db"
         self.hash_path = self.ly_dir / "file_hashes.json"
         self._conn = self._connect()
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
+        db = self.db_path.as_uri() + "?mode=ro" if self.read_only else str(self.db_path)
+        conn = sqlite3.connect(db, uri=self.read_only, check_same_thread=False)
         conn.row_factory = sqlite3.Row
+        if self.read_only:
+            return conn
         # WAL mode: faster writes, safe concurrent reads from watcher
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
@@ -154,7 +159,7 @@ class IndexStore:
                     c.embedding_text(),
                     _vec_to_blob(vec),
                 )
-                for c, vec in zip(chunks, vectors)
+                for c, vec in zip(chunks, vectors, strict=True)
             ],
         )
         self._conn.commit()
@@ -211,7 +216,7 @@ class IndexStore:
                     "language": r["language"],
                     "context_header": r["context_header"],
                     "embedding_text": r["embedding_text"],
-                    "_distance": d2,
+                    "_distance": d2 ** 0.5,
                 }
             )
         return results

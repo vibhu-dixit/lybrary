@@ -145,6 +145,16 @@ def test_search_token_budget(repo):
     assert "small" not in symbols
 
 
+def test_search_skips_oversized_result_when_smaller_one_fits(repo):
+    rows = [
+        _fake_row(symbol="first", content="small", distance=0.1),
+        _fake_row(symbol="huge", content="x" * 4000, distance=0.2),
+        _fake_row(symbol="later", content="small", distance=0.3),
+    ]
+    results = _run_search(repo, rows, max_tokens=200)
+    assert [r["symbol"] for r in results] == ["first", "later"]
+
+
 def test_search_missing_distance_defaults(repo):
     """Rows without _distance key must not raise."""
     row = _fake_row()

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lybrary"
-version = "0.1.0"
+version = "0.2.0"
 description = "Living structure-aware code memory for AI coding agents"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -85,7 +85,7 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 
 [tool.bumpversion]
-current_version = "0.1.0"
+current_version = "0.2.0"
 commit = true
 tag = true
 tag_name = "v{new_version}"

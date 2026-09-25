@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -59,6 +60,16 @@ def test_store_creates_lybrary_dir(tmp_path):
 def test_store_creates_db_file(tmp_path):
     IndexStore(tmp_path)
     assert (tmp_path / ".lybrary" / "index.db").exists()
+
+
+def test_read_only_store_uses_existing_index_without_setup(tmp_path):
+    writer = IndexStore(tmp_path)
+    writer.upsert_chunks([_make_chunk()], [_unit_vec()])
+    writer.close()
+    with patch("lybrary.indexer.store.ensure_dir", side_effect=AssertionError("unexpected write")):
+        reader = IndexStore(tmp_path, read_only=True)
+        assert reader.count() == 1
+        reader.close()
 
 
 def test_initial_count_is_zero(store):
@@ -232,6 +243,13 @@ def test_search_identical_vector_distance_near_zero(store):
     assert row["_distance"] == pytest.approx(0.0, abs=1e-5)
 
 
+def test_search_orthogonal_vector_distance(store):
+    a = [1.0] + [0.0] * (_DIM - 1)
+    b = [0.0, 1.0] + [0.0] * (_DIM - 2)
+    store.upsert_chunks([_make_chunk()], [a])
+    assert store.search_vector(b, limit=1)[0]["_distance"] == pytest.approx(2 ** 0.5)
+
+
 def test_search_limit_respected(store):
     chunks = [_make_chunk(symbol=f"fn{i}", start_line=i * 10) for i in range(5)]
     store.upsert_chunks(chunks, [_unit_vec()] * 5)
@@ -244,7 +262,6 @@ def test_search_empty_store(store):
 
 def test_search_returns_most_similar_first(store):
     """Most similar chunk (unit vec) should rank above a zero-vec chunk."""
-    import math
     close = _make_chunk(symbol="close", content="close match")
     far = _make_chunk(symbol="far", content="far away", start_line=20)
     # close gets the unit vector (perfect match); far gets zero vector (no match)

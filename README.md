@@ -79,6 +79,37 @@ After `lybrary start`, the daemon keeps running even after you close the termina
 
 ## 🔌 MCP integration
 
+### Codex
+
+Register Lybrary once on your machine:
+
+```bash
+codex mcp add lybrary -- lybrary mcp
+codex mcp list
+```
+
+In any repository or folder, run `lybrary start`. This initializes it, builds
+its index, and watches for changes. The first run downloads the embedding model;
+later runs use the local cache. Start Codex in that folder and ask it to call
+`memory_status` to verify the detected root. For consistent use, add a short
+line to the repo's `AGENTS.md`: "Use lybrary's `memory_query` to locate relevant
+code before opening broad sets of files; check source files before editing."
+
+### Claude Code
+
+Claude Code can use the same server. Register it once on your machine:
+
+```bash
+claude mcp add-json --scope user lybrary '{"type":"stdio","command":"lybrary","args":["mcp"]}'
+claude mcp list
+```
+
+Run `lybrary start` in each folder you want indexed, then start Claude Code
+there and use `/mcp` to confirm the connection. A `CLAUDE.md` instruction
+analogous to the `AGENTS.md` line above can encourage use of the tool.
+
+### Other MCP hosts
+
 Add to your MCP config (Kiro, Cursor, Claude Desktop, Windsurf):
 
 ```json
@@ -101,7 +132,7 @@ Your agent now has three tools:
 | `memory_update` | Triggers incremental or full re-index, optionally scoped to specific files |
 
 > **Agents should call `memory_query` before reading any files.**
-> This replaces multi-file reads with a single targeted query — cutting token usage by 80–90% on large codebases.
+> This can reduce code-reading tokens when the returned chunks replace full-file reads. Actual savings depend on the query and the files an agent would otherwise open.
 
 ---
 

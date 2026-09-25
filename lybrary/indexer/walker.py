@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Any
 
 from pathspec import PathSpec
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.console import Console
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 
 from lybrary.config import LybraryConfig
 from lybrary.indexer.ast_chunker import chunk_file, detect_language
@@ -81,6 +83,7 @@ def index_repository(
         BarColumn(),
         TaskProgressColumn(),
         transient=True,
+        console=Console(file=sys.stderr),
     ) as progress:
         task = progress.add_task("Chunking & embedding", total=len(changed))
 

@@ -26,6 +26,22 @@ def _log_file(root: Path) -> Path:
 
 
 def _is_running(pid: int) -> bool:
+    if os.name == "nt":
+        import ctypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.OpenProcess.restype = ctypes.c_void_p
+        handle = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            return False
+        try:
+            code = ctypes.c_ulong()
+            return (
+                bool(kernel32.GetExitCodeProcess(handle, ctypes.byref(code)))
+                and code.value == 259
+            )
+        finally:
+            kernel32.CloseHandle(handle)
     try:
         os.kill(pid, 0)
         return True
@@ -55,10 +71,13 @@ def daemon_status(root: Path) -> dict[str, Any]:
     try:
         from lybrary.indexer.store import IndexStore
 
-        store = IndexStore(root)
-        info["chunks"] = store.count()
-        hashes = store.load_hashes()
-        info["tracked_files"] = len(hashes)
+        store = IndexStore(root, read_only=True)
+        try:
+            info["chunks"] = store.count()
+            hashes = store.load_hashes()
+            info["tracked_files"] = len(hashes)
+        finally:
+            store.close()
     except Exception as e:
         info["index_error"] = str(e)
 
@@ -91,13 +110,18 @@ def stop_daemon(root: Path) -> None:
         # Windows: os.kill with signal.SIGTERM is not reliable for subprocesses;
         # use taskkill to terminate the whole process tree.
         try:
-            subprocess.run(
+            result = subprocess.run(
                 ["taskkill", "/F", "/T", "/PID", str(pid)],
                 check=False,
                 capture_output=True,
             )
-        except Exception:
-            pass
+            if result.returncode != 0:
+                message = result.stderr.decode(errors="replace").strip()
+                console.print(f"[red]Could not stop daemon:[/red] {message}")
+                return
+        except Exception as e:
+            console.print(f"[red]Could not stop daemon:[/red] {e}")
+            return
     else:
         os.kill(pid, signal.SIGTERM)
         for _ in range(20):

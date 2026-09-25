@@ -39,12 +39,15 @@ def search(
     end_line, content, context_header, score.
     """
     config = LybraryConfig.load(root)
-    store = IndexStore(root)
     embedder = Embedder(config.embed.model, config.embed.device)
 
     qvec = embedder.embed_query(query)
+    store = IndexStore(root, read_only=True)
     # Fetch extra candidates so the token-budget filter still has choices.
-    raw = store.search_vector(qvec, limit=limit * 2)
+    try:
+        raw = store.search_vector(qvec, limit=limit * 2)
+    finally:
+        store.close()
 
     results: list[dict[str, Any]] = []
     used = 0
@@ -52,7 +55,7 @@ def search(
         content = row.get("content", "")
         approx = max(1, len(content) // 4)
         if used + approx > max_tokens and results:
-            break
+            continue
         results.append(
             {
                 "id": row.get("id"),

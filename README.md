@@ -1,221 +1,99 @@
-<div align="center">
+# Lybrary — local codebase memory for coding agents
 
-# 🧠 lybrary
+Lybrary indexes a repository by code structure and gives Codex, Claude Code, and other MCP clients a searchable map of its functions, classes, and files. It runs locally, watches for changes, and lets an agent find relevant source lines before opening whole files.
 
-**Living structure-aware code memory for AI coding agents.**
+<!-- mcp-name: io.github.vibhu-dixit/lybrary -->
 
-[![PyPI version](https://img.shields.io/pypi/v/lybrary?color=blue)](https://pypi.org/project/lybrary/)
-[![Python](https://img.shields.io/pypi/pyversions/lybrary)](https://pypi.org/project/lybrary/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-86%20passed-brightgreen)](tests/)
+[PyPI](https://pypi.org/project/lybrary/) · [Documentation](https://vibhu-dixit.github.io/lybrary/) · [Source](https://github.com/vibhu-dixit/lybrary) · [Issues](https://github.com/vibhu-dixit/lybrary/issues)
 
-```bash
-pip install lybrary
-```
+## Start in any repository
 
-</div>
-
----
-
-## The problem
-
-Every time an AI agent starts a session, it re-reads your codebase from scratch.
-
-```
-agent: let me grep for auth logic...
-agent: reading src/auth/middleware.py...
-agent: reading src/auth/jwt.py...
-agent: reading src/auth/session.py...
-agent: reading src/utils/crypto.py...
-↳ 4,000 tokens burned before writing a single line.
-```
-
-On a large codebase this happens dozens of times per session. Tokens wasted. Context filled. Same files read over and over.
-
----
-
-## The solution
-
-lybrary gives your agent a **persistent memory** it can query instead of reading files.
-
-```
-agent: memory_query("authentication flow")
-↳ 3 chunks returned. 180 tokens. Done.
-```
-
-It indexes your repo using real AST boundaries, keeps the index fresh automatically, and exposes it as an **MCP server** that any AI IDE connects to natively.
-
----
-
-## ✨ Features
-
-| | |
-|---|---|
-| 🌳 **AST-aware chunking** | tree-sitter parses your code — never splits a function in half |
-| ⚡ **Background daemon** | watches for file changes, re-indexes only what changed |
-| 🔍 **Semantic search** | vector search with token-budget packing |
-| 🔌 **MCP server** | works with Kiro, Cursor, Claude Desktop, Windsurf out of the box |
-| 📦 **Fully local** | no cloud, no API keys, embeddings run on your machine |
-| 🐍 **Pure pip install** | Python 3.11–3.14, no PyTorch, no compilation needed |
-
-**Supported languages:** Python · JavaScript · TypeScript · TSX · Go · Rust · Java · C · C++
-
----
-
-## 🚀 Quick start
+Install once, then run `lybrary start` in each folder you want indexed:
 
 ```bash
 pip install lybrary
-
 cd /path/to/your/repo
-lybrary init
-lybrary start        # builds index + starts background daemon
-lybrary query "authentication flow"
+lybrary start
+lybrary status
 ```
 
-After `lybrary start`, the daemon keeps running even after you close the terminal. File changes are picked up automatically — only affected chunks are re-indexed.
+`start` creates `.lybrary/` if needed, builds the index, and runs a file-watching daemon in the background. It keeps running after the terminal closes. Run `lybrary stop` in that repository to stop it. The first indexing run may download the local embedding model; later runs use the cache.
 
----
+Each repository has its own index and `.lybrary/config.toml`. The index stays on your machine; no API key or hosted database is required.
 
-## 🔌 MCP integration
+## Connect an agent
+
+Register the MCP server once on your machine. Start your agent in an indexed repository, then ask it to call `memory_status` to confirm the root and chunk count.
 
 ### Codex
-
-Register Lybrary once on your machine:
 
 ```bash
 codex mcp add lybrary -- lybrary mcp
 codex mcp list
 ```
 
-In any repository or folder, run `lybrary start`. This initializes it, builds
-its index, and watches for changes. The first run downloads the embedding model;
-later runs use the local cache. Start Codex in that folder and ask it to call
-`memory_status` to verify the detected root. For consistent use, add a short
-line to the repo's `AGENTS.md`: "Use lybrary's `memory_query` to locate relevant
-code before opening broad sets of files; check source files before editing."
+Add this to that repository's `AGENTS.md` if you want Codex to use the memory consistently:
+
+```markdown
+When .lybrary/index.db exists, use Lybrary memory_query before broad code searches or reading multiple files. Inspect the returned source paths and lines before editing. If the index is absent or the tool fails, use normal search.
+```
 
 ### Claude Code
 
-Claude Code can use the same server. Register it once on your machine:
-
 ```bash
-claude mcp add-json --scope user lybrary '{"type":"stdio","command":"lybrary","args":["mcp"]}'
+claude mcp add --scope user --transport stdio lybrary -- lybrary mcp
 claude mcp list
 ```
 
-Run `lybrary start` in each folder you want indexed, then start Claude Code
-there and use `/mcp` to confirm the connection. A `CLAUDE.md` instruction
-analogous to the `AGENTS.md` line above can encourage use of the tool.
+In Claude Code, `/mcp` shows connection status. Put the same instruction in the repository's `CLAUDE.md`. Registration makes the tool available; the instruction helps the agent choose it when useful.
 
-### Other MCP hosts
+For another stdio MCP client, configure command `lybrary` with argument `mcp`. See the [setup guides](https://vibhu-dixit.github.io/lybrary/).
 
-Add to your MCP config (Kiro, Cursor, Claude Desktop, Windsurf):
+## What the agent gets
 
-```json
-{
-  "mcpServers": {
-    "lybrary": {
-      "command": "lybrary",
-      "args": ["mcp"]
-    }
-  }
-}
+`memory_query` blends exact symbol, SQLite text, and vector search. Its default response gives ranked paths, symbols, line ranges, and compact numbered excerpts. The agent can then inspect the relevant source lines. Set `include_content=true` when a full chunk is needed.
+
+`memory_status` reports the active repository and index health. `memory_update` triggers incremental, full, or path-scoped re-indexing.
+
+This can avoid repeated broad searches and large file reads, especially when the agent needs to locate a feature across sessions. Actual token use depends on the task, the agent's tool choices, and how much source it still needs to inspect. The [benchmark guide](https://vibhu-dixit.github.io/lybrary/token-usage.html) explains how to compare complete runs rather than infer savings from the size of one response.
+
+## Make it fit your repo
+
+Edit `.lybrary/config.toml` to choose the embedding model and device, chunk sizes, indexed languages, excluded paths, and file-watcher debounce. Add Git-style ignore patterns to `.lybrary/ignore`. Re-run `lybrary index --full` after changing settings that affect stored chunks or embeddings.
+
+Supported parsers: Python, JavaScript, TypeScript, TSX, Go, Rust, Java, C, and C++. The indexer uses tree-sitter boundaries and refreshes changed files while the daemon is running.
+
+## CLI
+
+| Command | Purpose |
+| --- | --- |
+| `lybrary start` | Initialize, index, and watch the current repository |
+| `lybrary stop` | Stop its background daemon |
+| `lybrary status` | Show daemon and index status |
+| `lybrary query "authentication flow"` | Search from the terminal |
+| `lybrary index --full` | Rebuild the index |
+| `lybrary logs` | Show daemon logs |
+| `lybrary mcp` | Run the stdio MCP server |
+
+If an agent starts above the indexed repository, pass that repository's absolute path as `repo_root` to the MCP tool, or start the agent inside it.
+
+## Measure the effect
+
+From a source checkout, compare the same read-only question with and without Lybrary:
+
+```bash
+python benchmark.py /path/to/indexed/repo "Trace how interview invitations are sent"
 ```
 
-Your agent now has three tools:
+The script records both answers, tool calls, and total, cached, and uncached input tokens under `.lybrary/benchmarks/`. Check answer correctness first; one question does not establish typical savings.
 
-| Tool | What it does |
-|---|---|
-| `memory_query` | Semantic search — returns ranked chunks with full source, file path, and line numbers |
-| `memory_status` | Reports daemon state, chunk count, and tracked files |
-| `memory_update` | Triggers incremental or full re-index, optionally scoped to specific files |
+## Contribute
 
-> **Agents should call `memory_query` before reading any files.**
-> This can reduce code-reading tokens when the returned chunks replace full-file reads. Actual savings depend on the query and the files an agent would otherwise open.
-
----
-
-## 🖥️ CLI reference
-
-| Command | Description |
-|---|---|
-| `lybrary init` | Create `.lybrary/` and default config |
-| `lybrary start` | Index (if needed) + start persistent daemon |
-| `lybrary stop` | Stop the daemon |
-| `lybrary status` | Show running state, chunk count, tracked files |
-| `lybrary index` | Force (re)index |
-| `lybrary query` | Semantic search over the memory |
-| `lybrary logs` | View / follow daemon log |
-| `lybrary mcp` | Start MCP server (stdio transport) |
-
----
-
-## 🏗️ How chunking works
-
-```
-your file
-    │
-    ▼
-tree-sitter parser
-    │
-    ▼
-AST definition nodes          ← functions, classes, methods, interfaces
-    │
-    ├── class Foo  ──────────► chunk: entire class body
-    │     ├── def bar ───────► chunk: method bar (its own chunk too)
-    │     └── def baz ───────► chunk: method baz (its own chunk too)
-    │
-    └── module-level ────────► chunk: imports, constants, top-level statements
-```
-
-Each chunk gets a context header and is embedded with **MiniLM-L6-v2 via ONNX Runtime** — fast, local, no GPU needed.
-
----
-
-## 🗂️ Architecture
-
-```
-.lybrary/
-├── config.toml          # model, chunk size, ignore patterns
-├── index.db             # SQLite: chunks + float32 vector blobs
-├── file_hashes.json     # content-hash map for incremental updates
-├── daemon.pid
-└── daemon.log
-```
-
-- **Indexer** — tree-sitter → AST chunks → fastembed / ONNX Runtime embeddings
-- **Store** — SQLite + numpy (cosine similarity via batched dot product, no external vector DB)
-- **Daemon** — watchdog file watcher + debounce + incremental re-chunk/embed
-- **MCP** — FastMCP server over stdio
-
----
-
-## 🗺️ Roadmap
-
-- [x] AST chunker (multi-language, cAST-style)
-- [x] Incremental indexing via content hashes
-- [x] Background daemon + file watcher (Windows + Unix)
-- [x] CLI (`init` / `start` / `stop` / `status` / `index` / `query` / `logs` / `mcp`)
-- [x] MCP server (`memory_query`, `memory_status`, `memory_update`)
-- [ ] Call/import graph expansion
-- [ ] Hierarchical file/package summaries
-- [ ] Cross-session decision memory
-- [ ] systemd / launchd user service helper
-
----
-
-## 🤝 Contributing
-
-Issues and PRs welcome. Run the test suite with:
+Issues and pull requests are welcome. For a local checkout:
 
 ```bash
 pip install -e ".[dev]"
 pytest
 ```
 
----
-
-## 📄 License
-
-MIT
+Lybrary is MIT licensed. See the [changelog](CHANGELOG.md) for releases.

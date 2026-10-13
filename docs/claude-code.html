@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Use Lybrary codebase memory with Claude Code</title>
+  <meta name="description" content="Connect the Lybrary local MCP server to Claude Code and give it a per-repository code index with configurable search and source excerpts.">
+  <link rel="canonical" href="https://vibhu-dixit.github.io/lybrary/claude-code.html">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><a class="brand" href="./">lybrary</a><nav aria-label="Main navigation"><a href="codex.html">Codex</a><a href="claude-code.html">Claude Code</a><a href="token-usage.html">Token usage</a><a href="https://github.com/vibhu-dixit/lybrary">GitHub</a></nav></header>
+<main>
+  <p class="eyebrow">Setup guide</p>
+  <h1>Codebase memory for Claude Code</h1>
+  <p class="lead">Lybrary gives Claude Code a local MCP tool for finding source locations without starting every search from a full-file read.</p>
+  <h2>1. Install and index</h2>
+  <pre><code>pip install lybrary
+cd /path/to/your/repo
+lybrary start
+lybrary status</code></pre>
+  <h2>2. Register once for your user</h2>
+  <pre><code>claude mcp add --scope user --transport stdio lybrary -- lybrary mcp
+claude mcp list</code></pre>
+  <p>Start Claude Code inside the indexed repository. Use <code>/mcp</code> to inspect the connection, then ask it to call <code>memory_status</code>.</p>
+  <h2>3. Add a project instruction</h2>
+  <p>Put this in the repository's <code>CLAUDE.md</code>:</p>
+  <pre><code>When .lybrary/index.db exists, use Lybrary memory_query before broad code searches
+or reading multiple files. Inspect returned paths and lines before editing.
+If the index is absent or the tool fails, use normal search.</code></pre>
+  <p>Each repository can tune its own embedding model, chunk sizes, indexed languages, excluded paths, and watcher debounce in <code>.lybrary/config.toml</code>. Rebuild after changing settings that alter the stored index.</p>
+  <p class="note">The MCP connection supplies the tool; it does not automatically make every Claude Code session call it. The project instruction gives the agent a clear trigger.</p>
+  <p>For current Claude Code MCP syntax, see the <a href="https://code.claude.com/docs/en/mcp">official Claude Code documentation</a>.</p>
+</main>
+<footer><a href="./">Lybrary</a> · <a href="codex.html">Codex setup</a> · <a href="https://github.com/vibhu-dixit/lybrary">GitHub</a></footer>
+</body>
+</html>

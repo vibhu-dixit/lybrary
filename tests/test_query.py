@@ -91,6 +91,8 @@ def _run_search(repo, rows, query="test", limit=8, max_tokens=6000):
     ):
         store_inst = MagicMock()
         store_inst.search_vector.return_value = rows
+        store_inst.search_symbol.return_value = []
+        store_inst.search_text.return_value = []
         MockStore.return_value = store_inst
 
         emb_inst = MagicMock()
@@ -162,3 +164,67 @@ def test_search_missing_distance_defaults(repo):
     results = _run_search(repo, [row])
     assert len(results) == 1
     assert results[0]["score"] == pytest.approx(0.0)
+
+
+def test_exact_identifier_prefers_text_lookup_without_embedding(repo):
+    with (
+        patch("lybrary.query.IndexStore") as MockStore,
+        patch("lybrary.query.Embedder") as MockEmbedder,
+    ):
+        store = MockStore.return_value
+        store.search_symbol.return_value = [_fake_row(symbol="formatIcsDate")]
+        results = search(repo, "formatIcsDate", limit=3)
+    assert [row["symbol"] for row in results] == ["formatIcsDate"]
+    MockEmbedder.assert_not_called()
+
+
+def test_backticked_identifier_in_question_uses_text_lookup(repo):
+    with (
+        patch("lybrary.query.IndexStore") as MockStore,
+        patch("lybrary.query.Embedder") as MockEmbedder,
+    ):
+        store = MockStore.return_value
+        store.search_symbol.return_value = [_fake_row(symbol="formatIcsDate")]
+        results = search(repo, "Where is `formatIcsDate` defined?", limit=3)
+    assert [row["symbol"] for row in results] == ["formatIcsDate"]
+    MockEmbedder.assert_not_called()
+
+
+def test_broad_question_with_identifier_still_uses_semantic_search(repo):
+    with (
+        patch("lybrary.query.IndexStore") as MockStore,
+        patch("lybrary.query.Embedder"),
+    ):
+        store = MockStore.return_value
+        store.search_symbol.return_value = [_fake_row(symbol="sendInterviewPanelEmail")]
+        store.search_text.return_value = []
+        store.search_vector.return_value = [_fake_row(symbol="buildIcs")]
+        results = search(repo, "create calendar attachment and sendInterviewPanelEmail")
+    assert [row["symbol"] for row in results] == ["buildIcs"]
+
+
+def test_conceptual_query_blends_text_and_vector_results(repo):
+    with (
+        patch("lybrary.query.IndexStore") as MockStore,
+        patch("lybrary.query.Embedder"),
+    ):
+        store = MockStore.return_value
+        store.search_text.return_value = [
+            _fake_row(symbol="emailAttachment", path="src/comms.ts")
+        ]
+        store.search_vector.return_value = [
+            _fake_row(symbol="unrelated", path="src/other.ts", distance=0.01)
+        ]
+        results = search(repo, "interview calendar attachment", limit=2)
+    assert [row["symbol"] for row in results] == ["emailAttachment", "unrelated"]
+
+
+def test_conceptual_results_limit_near_duplicates_from_one_file(repo):
+    rows = [
+        _fake_row(symbol=f"template{i}", path="src/templates.ts", distance=i / 100)
+        for i in range(4)
+    ] + [_fake_row(symbol="sendEmail", path="src/send.ts", distance=0.5)]
+    results = _run_search(repo, rows, query="calendar attachment flow", limit=4)
+    assert [row["symbol"] for row in results] == [
+        "template0", "template1", "sendEmail"
+    ]

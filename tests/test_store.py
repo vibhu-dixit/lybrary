@@ -270,6 +270,51 @@ def test_search_returns_most_similar_first(store):
     assert results[0]["symbol"] == "close"
 
 
+def test_search_symbol_finds_exact_name_inside_export_declaration(store):
+    store.upsert_chunks(
+        [
+            _make_chunk(symbol="export function formatIcsDate(d: Date)"),
+            _make_chunk(symbol="buildIcs", start_line=20),
+        ],
+        [_unit_vec(), _unit_vec()],
+    )
+    results = store.search_symbol("formatIcsDate", limit=2)
+    assert [row["symbol"] for row in results] == ["export function formatIcsDate(d: Date)"]
+    assert results[0]["path"] == "src/foo.py"
+
+
+def test_search_text_ranks_content_with_both_query_terms(store):
+    store.upsert_chunks(
+        [
+            _make_chunk(path="a.ts", symbol="calendarEmail", content="interview.ics attachment"),
+            _make_chunk(path="b.ts", symbol="other", start_line=20, content="interview"),
+        ],
+        [_zero_vec(), _unit_vec()],
+    )
+    results = store.search_text(["interview", "attachment"], limit=2)
+    assert [row["path"] for row in results] == ["a.ts", "b.ts"]
+
+
+def test_search_text_prefers_content_covering_more_terms_than_generic_symbol(store):
+    store.upsert_chunks(
+        [
+            _make_chunk(
+                path="generic.ts", symbol="sendInterviewEmail",
+                content="interview email sent",
+            ),
+            _make_chunk(
+                path="attachment.ts", symbol="sendInvitation", start_line=20,
+                content="interview calendar attachment email sent",
+            ),
+        ],
+        [_unit_vec(), _zero_vec()],
+    )
+    results = store.search_text(
+        ["interview", "calendar", "attachment", "email", "sent"], limit=2
+    )
+    assert results[0]["path"] == "attachment.ts"
+
+
 # ---------------------------------------------------------------------------
 # all_paths
 # ---------------------------------------------------------------------------

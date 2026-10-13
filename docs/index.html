@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Lybrary — local codebase memory for Codex and Claude Code</title>
+  <meta name="description" content="Index any repository locally and give coding agents precise code search through MCP. Set up Lybrary for Codex, Claude Code, or another MCP client.">
+  <link rel="canonical" href="https://vibhu-dixit.github.io/lybrary/">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><a class="brand" href="./">lybrary</a><nav aria-label="Main navigation"><a href="codex.html">Codex</a><a href="claude-code.html">Claude Code</a><a href="token-usage.html">Token usage</a><a href="https://github.com/vibhu-dixit/lybrary">GitHub</a></nav></header>
+<main>
+  <p class="eyebrow">Local codebase memory · MCP server</p>
+  <h1>Give your coding agent a map of your codebase.</h1>
+  <p class="lead">Lybrary indexes functions, classes, and files in each repository. Agents can query compact, line-numbered results, then inspect only the source they need.</p>
+  <div class="actions"><a class="button primary" href="#start">Get started</a><a class="button" href="https://pypi.org/project/lybrary/">View on PyPI</a></div>
+  <div class="grid">
+    <div class="card"><h3>Any repository</h3><p>Run <code>lybrary start</code> inside a folder. Its own index is created and kept fresh by a background watcher.</p></div>
+    <div class="card"><h3>Your configuration</h3><p>Change indexed languages, ignored paths, chunk sizes, model, device, and watcher debounce in <code>.lybrary/config.toml</code>.</p></div>
+    <div class="card"><h3>Your machine</h3><p>Source and index remain local. The stdio MCP server works with Codex, Claude Code, and other compatible clients.</p></div>
+  </div>
+  <h2 id="start">Start in a repository</h2>
+  <pre><code>pip install lybrary
+cd /path/to/your/repo
+lybrary start
+lybrary status</code></pre>
+  <p>The daemon continues after the terminal closes. Use <code>lybrary stop</code> in that repository when you want to stop watching it.</p>
+  <h2>Connect your agent</h2>
+  <p>Register Lybrary once with your MCP client, then start the agent inside an indexed repository. Follow the setup guide for <a href="codex.html">Codex</a> or <a href="claude-code.html">Claude Code</a>.</p>
+  <p class="note">MCP registration makes the tools available. A short instruction in <code>AGENTS.md</code> or <code>CLAUDE.md</code> helps the agent call <code>memory_query</code> before broad searches.</p>
+  <h2>Where it can save context</h2>
+  <p>A compact result points to a symbol, file, and relevant lines, so an agent may avoid opening several unrelated files. It still inspects current source before editing. Savings vary by task and agent behavior; <a href="token-usage.html">measure complete runs</a> to assess the effect in your repo.</p>
+  <h2>Built for code</h2>
+  <p>Tree-sitter identifies code boundaries in Python, JavaScript, TypeScript, TSX, Go, Rust, Java, C, and C++. Search combines exact symbols, SQLite text matches, and local embeddings. You can use the CLI directly or the MCP tools <code>memory_query</code>, <code>memory_status</code>, and <code>memory_update</code>.</p>
+</main>
+<footer><a href="https://github.com/vibhu-dixit/lybrary">Source</a> · <a href="https://github.com/vibhu-dixit/lybrary/issues">Issues</a> · <a href="https://pypi.org/project/lybrary/">PyPI</a> · MIT license</footer>
+</body>
+</html>

@@ -221,6 +221,49 @@ class IndexStore:
             )
         return results
 
+    def search_symbol(self, name: str, limit: int = 10) -> list[dict[str, Any]]:
+        """Find an identifier in stored symbol names without embedding a query."""
+        rows = self._conn.execute(
+            """
+            SELECT id, path, symbol, kind, start_line, end_line, content, context_header
+            FROM chunks
+            WHERE instr(lower(symbol), lower(?)) > 0
+            ORDER BY CASE WHEN lower(symbol) = lower(?) THEN 0 ELSE 1 END,
+                     length(symbol), path
+            LIMIT ?
+            """,
+            (name, name, limit),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    def search_text(self, terms: list[str], limit: int = 10) -> list[dict[str, Any]]:
+        """Rank chunks by query-term matches in symbols, paths, and content."""
+        if not terms:
+            return []
+        parts = []
+        values: list[str | int] = []
+        for term in terms[:8]:
+            parts.append(
+                "(4 * (instr(lower(coalesce(symbol, '')), ?) > 0) + "
+                "(instr(lower(path), ?) > 0) + "
+                "4 * (instr(lower(content), ?) > 0))"
+            )
+            values.extend((term, term, term))
+        score = " + ".join(parts)
+        rows = self._conn.execute(
+            f"""
+            SELECT * FROM (
+                SELECT id, path, symbol, kind, start_line, end_line,
+                       content, context_header, ({score}) AS lexical_score
+                FROM chunks
+            ) WHERE lexical_score > 0
+            ORDER BY lexical_score DESC, path
+            LIMIT ?
+            """,
+            [*values, limit],
+        ).fetchall()
+        return [dict(row) for row in rows]
+
     def all_paths(self) -> set[str]:
         rows = self._conn.execute("SELECT DISTINCT path FROM chunks").fetchall()
         return {r["path"] for r in rows}

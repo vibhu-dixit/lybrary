@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.vibhu-dixit/lybrary",
+  "title": "Lybrary",
+  "description": "Local, configurable codebase memory for coding agents. Search indexed source through MCP.",
+  "version": "0.3.0",
+  "repository": {
+    "url": "https://github.com/vibhu-dixit/lybrary",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "lybrary",
+      "version": "0.3.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

@@ -9,6 +9,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.3.0] — 2026-10-12
+
+### Added
+- Blended SQLite text and vector search for conceptual code queries, with exact symbol lookup.
+- Compact line-numbered MCP excerpts that show separate relevant source steps.
+- Codex and Claude Code setup guides, configurable-index documentation, and MCP Registry metadata.
+- A paired Codex benchmark script that records answers, tool calls, and token use.
+
+### Changed
+- Kept default MCP responses compact while allowing full source when requested.
+- Updated public package metadata and documentation to describe usage without an unverified savings claim.
+
+---
+
 ## [0.2.0] — 2026-09-24
 
 ### Added

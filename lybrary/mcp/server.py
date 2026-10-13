@@ -27,9 +27,9 @@ from lybrary.indexer.store import IndexStore
 mcp = FastMCP(
     "lybrary_mcp",
     instructions=(
-        "lybrary gives AI agents low-token access to a codebase's structure. "
-        "Always call memory_query before reading raw files. "
-        "Returned chunks include file path, line numbers, and the full symbol body."
+        "Use memory_query to locate code for conceptual questions, then inspect only "
+        "the relevant source lines. Exact known symbols can be found with text search. "
+        "Prefer one compact query; request full content only when needed."
     ),
 )
 
@@ -42,16 +42,78 @@ def _resolve_root(repo_root: str | None) -> Path:
     """Return the repository root Path, falling back to find_repo_root()."""
     if repo_root:
         p = Path(repo_root).expanduser().resolve()
-        if not p.exists():
-            raise ValueError(f"repo_root does not exist: {p}")
-        return p
-    from lybrary.config import find_repo_root
-    return find_repo_root()
+    else:
+        from lybrary.config import find_repo_root
+        p = find_repo_root()
+    if not p.is_dir():
+        raise ValueError(f"repo_root is not a directory: {p}")
+    if not (p / ".lybrary" / "index.db").exists():
+        nearby = [child for child in p.iterdir()
+                  if child.is_dir() and (child / ".lybrary" / "index.db").exists()]
+        if nearby:
+            names = ", ".join(str(child) for child in nearby[:3])
+            raise ValueError(
+                f"No Lybrary index in {p}. Indexed child: {names}. "
+                "Set repo_root to that folder."
+            )
+    return p
 
 
-def _format_chunk(r: dict[str, Any], rank: int) -> dict[str, Any]:
+def _excerpt(r: dict[str, Any], term_weights: dict[str, float]) -> str:
+    """Show short source spans covering distinct query terms."""
+    lines = r.get("content", "").splitlines()
+    if not lines:
+        return ""
+
+    def score(i: int, covered: set[str]) -> float:
+        line = lines[i].strip().lower()
+        matched = sum(
+            weight for term, weight in term_weights.items()
+            if term not in covered and term in line
+        )
+        if not matched:
+            return 0.0
+        if line.startswith("//"):
+            return matched * 0.2
+        if "console.log(" in line:
+            return matched * 0.02
+        return matched + (0.3 if "await " in line else 0.03 if "=" in line else 0)
+
+    anchors: list[int] = []
+    covered: set[str] = set()
+    for _ in range(3):
+        candidates = [i for i in range(len(lines)) if all(abs(i - a) > 3 for a in anchors)]
+        if not candidates:
+            break
+        best = max(candidates, key=lambda i: score(i, covered))
+        if score(best, covered) <= 0:
+            break
+        anchors.append(best)
+        covered.update(term for term in term_weights if term in lines[best].lower())
+    if not anchors:
+        anchors = [0]
+
+    selected = sorted({
+        i for a in anchors
+        for i in range(a, min(a + (6 if "await " in lines[a] else 4), len(lines)))
+        if lines[i].strip() and ("console.log(" not in lines[i] or i in anchors)
+    })
+    excerpt: list[str] = []
+    previous = None
+    for i in selected:
+        if previous is not None and i > previous + 1:
+            excerpt.append("...")
+        excerpt.append(f"{r.get('start_line', 1) + i}: {lines[i].rstrip()[:140]}")
+        previous = i
+    return "\n".join(excerpt)
+
+
+def _format_chunk(
+    r: dict[str, Any], rank: int, include_content: bool = False,
+    term_weights: dict[str, float] | None = None,
+) -> dict[str, Any]:
     """Return a clean, agent-friendly dict for a single search result."""
-    return {
+    result = {
         "rank": rank,
         "score": round(r.get("score", 0.0), 4),
         "path": r.get("path"),
@@ -59,9 +121,13 @@ def _format_chunk(r: dict[str, Any], rank: int) -> dict[str, Any]:
         "kind": r.get("kind"),
         "start_line": r.get("start_line"),
         "end_line": r.get("end_line"),
-        "context_header": r.get("context_header"),
-        "content": r.get("content", ""),
     }
+    if include_content:
+        result["context_header"] = r.get("context_header")
+        result["content"] = r.get("content", "")
+    else:
+        result["excerpt"] = _excerpt(r, term_weights or {})
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -82,13 +148,13 @@ class QueryInput(BaseModel):
         max_length=500,
     )
     limit: int = Field(
-        default=8,
-        description="Maximum number of chunks to return (1–20).",
+        default=5,
+        description="Maximum number of compact locations to return (1–8). Start with 5.",
         ge=1,
-        le=20,
+        le=8,
     )
     max_tokens: int = Field(
-        default=6000,
+        default=2000,
         description="Approximate token budget for returned content. "
         "Results are packed until this budget is reached.",
         ge=100,
@@ -98,6 +164,10 @@ class QueryInput(BaseModel):
         default=None,
         description="Absolute path to the repository root. "
         "Omit to auto-detect from the current working directory.",
+    )
+    include_content: bool = Field(
+        default=False,
+        description="Include full source bodies. Defaults to compact line-numbered excerpts.",
     )
 
     @field_validator("query")
@@ -156,21 +226,18 @@ class UpdateInput(BaseModel):
     },
 )
 async def memory_query(params: QueryInput) -> str:
-    """Semantic search over the lybrary code memory index.
+    """Locate code using exact symbol lookup or semantic search.
 
-    Returns the most relevant code chunks for the given query, packed within
-    the token budget. Each chunk contains the full function/class body, its
-    file path, line numbers, and a context header.
-
-    ALWAYS call this before reading raw files. It drastically reduces token
-    consumption by surfacing only the relevant code units.
+    Returns compact locations with line-numbered source excerpts by default.
+    Set include_content for full function/class bodies when needed.
 
     Args:
         params (QueryInput):
             - query (str): What to search for (e.g. "JWT token validation")
-            - limit (int): Max chunks to return, 1–20 (default 8)
-            - max_tokens (int): Token budget for content (default 6000)
+            - limit (int): Max chunks to return, 1–8 (default 5)
+            - max_tokens (int): Token budget when include_content is true (default 2000)
             - repo_root (str | None): Repo path, or None to auto-detect
+            - include_content (bool): Include full source (default false)
 
     Returns:
         str: JSON with schema:
@@ -180,14 +247,14 @@ async def memory_query(params: QueryInput) -> str:
             "chunks": [
                 {
                     "rank": int,
-                    "score": float,       # cosine similarity 0–1
+                    "score": float,       # relevance 0–1
                     "path": str,          # relative file path
                     "symbol": str,        # function/class name
                     "kind": str,          # e.g. "function_definition"
                     "start_line": int,
                     "end_line": int,
-                    "context_header": str,
-                    "content": str        # full source of the symbol
+                    "excerpt": str       # compact mode; relevant numbered source lines
+                    # full mode instead adds context_header and content
                 }
             ]
         }
@@ -201,13 +268,24 @@ async def memory_query(params: QueryInput) -> str:
     """
     try:
         root = _resolve_root(params.repo_root)
-        from lybrary.query import search
+        from lybrary.query import query_terms, search
 
-        raw = search(root, params.query, limit=params.limit, max_tokens=params.max_tokens)
-        chunks = [_format_chunk(r, i + 1) for i, r in enumerate(raw)]
+        raw = search(
+            root, params.query, limit=params.limit,
+            max_tokens=params.max_tokens if params.include_content else None,
+        )
+        terms = query_terms(params.query)
+        term_weights = {
+            term: 1 / max(1, sum(term in r.get("content", "").lower() for r in raw)) ** 2
+            for term in terms
+        }
+        chunks = [
+            _format_chunk(r, i + 1, params.include_content, term_weights)
+            for i, r in enumerate(raw)
+        ]
         return json.dumps(
             {"query": params.query, "results_count": len(chunks), "chunks": chunks},
-            indent=2,
+            separators=(",", ":"),
         )
     except Exception as e:
         return json.dumps({"error": str(e)})

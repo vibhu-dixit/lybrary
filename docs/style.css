@@ -1,0 +1,13 @@
+:root{color-scheme:light;--ink:#15201c;--muted:#53635c;--paper:#f6f8f4;--line:#dce5dc;--accent:#13684b}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 system-ui,-apple-system,Segoe UI,sans-serif}
+a{color:var(--accent)}a:hover{text-decoration-thickness:2px}header,main,footer{max-width:920px;margin:auto;padding:0 24px}
+header{display:flex;align-items:center;justify-content:space-between;gap:24px;padding-top:24px;padding-bottom:24px;border-bottom:1px solid var(--line)}
+.brand{font-weight:800;font-size:1.35rem;letter-spacing:-.04em;text-decoration:none;color:var(--ink)}nav{display:flex;flex-wrap:wrap;gap:16px}nav a{text-decoration:none;font-size:.9rem}
+main{padding-top:64px;padding-bottom:80px}h1,h2,h3{line-height:1.18;letter-spacing:-.04em}h1{font-size:clamp(2.5rem,7vw,4.5rem);max-width:760px;margin:0 0 24px}h2{font-size:2rem;margin:64px 0 16px}h3{font-size:1.25rem;margin:30px 0 8px}
+.lead{font-size:1.25rem;color:var(--muted);max-width:720px}.eyebrow{text-transform:uppercase;letter-spacing:.12em;font-weight:700;font-size:.75rem;color:var(--accent)}
+.actions{display:flex;flex-wrap:wrap;gap:12px;margin:30px 0}.button{display:inline-block;padding:11px 17px;border:1px solid var(--accent);border-radius:7px;text-decoration:none;font-weight:700}.button.primary{background:var(--accent);color:white}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin:26px 0}.card{padding:22px;border:1px solid var(--line);border-radius:10px;background:white}.card h3{margin-top:0}
+pre{overflow:auto;background:#17251e;color:#edf7ef;padding:20px;border-radius:10px;line-height:1.5}code{font:0.9em/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}p code,li code{background:#e8eee7;padding:2px 4px;border-radius:4px}
+ol,ul{padding-left:24px}li{margin:8px 0}.note{border-left:3px solid var(--accent);padding:10px 16px;background:#edf3ed}
+footer{border-top:1px solid var(--line);padding-top:24px;padding-bottom:40px;color:var(--muted);font-size:.9rem}
+@media(max-width:600px){header{align-items:flex-start;flex-direction:column}main{padding-top:42px}}

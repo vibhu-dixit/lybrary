@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Measure coding-agent token usage with Lybrary</title>
+  <meta name="description" content="Learn where codebase memory may reduce repeated file reads, and compare complete Codex runs for correctness, tool calls, and total token usage.">
+  <link rel="canonical" href="https://vibhu-dixit.github.io/lybrary/token-usage.html">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><a class="brand" href="./">lybrary</a><nav aria-label="Main navigation"><a href="codex.html">Codex</a><a href="claude-code.html">Claude Code</a><a href="token-usage.html">Token usage</a><a href="https://github.com/vibhu-dixit/lybrary">GitHub</a></nav></header>
+<main>
+  <p class="eyebrow">Measurement guide</p>
+  <h1>Does codebase memory save tokens in your repo?</h1>
+  <p class="lead">The useful measure is the complete agent run. A smaller retrieval result can still lead to extra calls or turns, so compare correct answers end to end.</p>
+  <h2>Where savings can come from</h2>
+  <ul>
+    <li>Finding relevant files and symbols before opening many unrelated files.</li>
+    <li>Using numbered excerpts to choose a narrow source range to inspect.</li>
+    <li>Reusing an index across sessions instead of rebuilding the same mental map.</li>
+  </ul>
+  <p>Lybrary does not guarantee that every task uses fewer tokens. Exact symbol searches, small repositories, or questions requiring full function bodies may favor normal tools.</p>
+  <h2>Run a paired read-only comparison</h2>
+  <p>From a Lybrary source checkout, choose a real question whose answer you can verify:</p>
+  <pre><code>python benchmark.py /path/to/indexed/repo \
+  "Trace how an invitation email and calendar attachment are sent"</code></pre>
+  <p>The script records runs with and without Lybrary under <code>.lybrary/benchmarks/</code>. Read both answers and traces. Compare answer correctness, total input tokens, cached and uncached input tokens, output tokens, and tool calls. Repeat with exact-symbol, cross-file, and unfamiliar-feature questions before drawing a general conclusion.</p>
+  <h2>Tune your workflow</h2>
+  <p>Use <code>memory_query</code> for conceptual navigation, inspect only the returned source ranges, and use full content only when the compact excerpt is insufficient. In a repository's <code>AGENTS.md</code> or <code>CLAUDE.md</code>, tell the agent when to query Lybrary and when to fall back to ordinary search.</p>
+</main>
+<footer><a href="./">Lybrary</a> · <a href="codex.html">Codex setup</a> · <a href="claude-code.html">Claude Code setup</a></footer>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Use Lybrary codebase memory with Codex</title>
+  <meta name="description" content="Install Lybrary, index a repository, connect its local MCP server to Codex, and help the agent use compact code search results.">
+  <link rel="canonical" href="https://vibhu-dixit.github.io/lybrary/codex.html">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><a class="brand" href="./">lybrary</a><nav aria-label="Main navigation"><a href="codex.html">Codex</a><a href="claude-code.html">Claude Code</a><a href="token-usage.html">Token usage</a><a href="https://github.com/vibhu-dixit/lybrary">GitHub</a></nav></header>
+<main>
+  <p class="eyebrow">Setup guide</p>
+  <h1>Codebase memory for Codex</h1>
+  <p class="lead">Connect Lybrary once. Start its index in each repository where you want Codex to query code locations.</p>
+  <h2>1. Install and index</h2>
+  <pre><code>pip install lybrary
+cd /path/to/your/repo
+lybrary start
+lybrary status</code></pre>
+  <h2>2. Register the MCP server</h2>
+  <pre><code>codex mcp add lybrary -- lybrary mcp
+codex mcp list</code></pre>
+  <p>Register once per machine. Start a new Codex session in the indexed repository and ask it to call <code>memory_status</code>. Check that it reports the intended root and a populated index.</p>
+  <h2>3. Tell Codex when to use it</h2>
+  <p>Add this to the repository's <code>AGENTS.md</code>:</p>
+  <pre><code>When .lybrary/index.db exists, use Lybrary memory_query before broad code searches
+or reading multiple files. Inspect returned paths and lines before editing.
+If the index is absent or the tool fails, use normal search.</code></pre>
+  <p>Ask a conceptual question such as “Where is login token validation handled?” The agent can use the returned file and line numbers to inspect current source. Exact known symbols may be quicker to find with ordinary text search.</p>
+  <h2>Use it across folders</h2>
+  <p>Run <code>lybrary start</code> once in each repository. Lybrary keeps a separate index and configuration in each folder. If Codex starts above the indexed folder, pass its absolute path as <code>repo_root</code> to <code>memory_query</code>.</p>
+  <p class="note">If <code>memory_status</code> or <code>memory_query</code> errors, run <code>lybrary status</code> and <code>lybrary query "your question"</code> in a terminal first. A newly registered or updated stdio server may require a fresh Codex session.</p>
+  <p>See the <a href="token-usage.html">measurement guide</a> for comparing agent runs. For Codex MCP configuration details, see the <a href="https://developers.openai.com/learn/docs-mcp">official OpenAI documentation</a>.</p>
+</main>
+<footer><a href="./">Lybrary</a> · <a href="claude-code.html">Claude Code setup</a> · <a href="https://github.com/vibhu-dixit/lybrary">GitHub</a></footer>
+</body>
+</html>

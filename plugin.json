@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "lybrary",
+  "version": "0.3.2",
+  "description": "Set up local repository code search and codebase memory for coding agents.",
+  "author": { "name": "lybrary contributors" },
+  "homepage": "https://vibhu-dixit.github.io/lybrary/agent-setup.html",
+  "repository": "https://github.com/vibhu-dixit/lybrary",
+  "license": "MIT",
+  "keywords": ["codebase memory", "code search", "MCP", "repository indexing"]
+}

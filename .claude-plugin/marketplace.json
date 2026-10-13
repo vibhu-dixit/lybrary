@@ -1,0 +1,12 @@
+{
+  "name": "lybrary",
+  "description": "Local codebase memory and repository search for coding agents",
+  "owner": { "name": "lybrary contributors" },
+  "plugins": [
+    {
+      "name": "lybrary",
+      "source": "./",
+      "description": "Local repository code search and codebase memory for Claude Code"
+    }
+  ]
+}

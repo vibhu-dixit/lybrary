@@ -14,6 +14,10 @@
   <p class="eyebrow">Setup guide</p>
   <h1>Codebase memory for Codex</h1>
   <p class="lead">Connect Lybrary once. Start its index in each repository where you want Codex to query code locations.</p>
+  <p>For a setup skill that Codex can invoke when you ask for local repository memory, install Lybrary's plugin:</p>
+  <pre><code>codex plugin marketplace add vibhu-dixit/lybrary
+codex plugin add lybrary@lybrary</code></pre>
+  <p>The plugin provides setup guidance. Connect the local MCP server in step 2 to make <code>memory_query</code> available.</p>
   <h2>1. Install and index</h2>
   <pre><code>pip install lybrary
 cd /path/to/your/repo

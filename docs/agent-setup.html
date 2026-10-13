@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Install local codebase memory for an AI coding agent | Lybrary</title>
+  <meta name="description" content="Give Codex or Claude Code a local, searchable index of a repository. Find the official Lybrary PyPI package, install it, connect its MCP server, and verify the agent can use it.">
+  <link rel="canonical" href="https://vibhu-dixit.github.io/lybrary/agent-setup.html">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><a class="brand" href="./">lybrary</a><nav aria-label="Main navigation"><a href="agent-setup.html">Agent setup</a><a href="codex.html">Codex</a><a href="claude-code.html">Claude Code</a><a href="https://github.com/vibhu-dixit/lybrary">GitHub</a></nav></header>
+<main>
+  <p class="eyebrow">For people and coding agents</p>
+  <h1>Install local codebase memory for an AI coding agent.</h1>
+  <p class="lead">Lybrary is an open-source Python package and MCP server that indexes each repository locally. It lets Codex, Claude Code, and other MCP clients locate symbols and relevant source lines before opening files.</p>
+  <p>The official package is <a href="https://pypi.org/project/lybrary/">lybrary on PyPI</a>. Review its <a href="https://github.com/vibhu-dixit/lybrary">source repository</a> and <a href="https://github.com/vibhu-dixit/lybrary/releases">releases</a> before installing it on a machine.</p>
+  <h2>Ask your agent</h2>
+  <p>In the repository you want indexed, you can ask:</p>
+  <pre><code>Set up Lybrary from PyPI as local codebase memory for this repository.
+Check its source and package identity, install it, run lybrary start here,
+connect its MCP server to this coding agent, and verify memory_status
+reports this repository and a populated index.</code></pre>
+  <p>The agent should follow its normal software-installation permissions. Lybrary does not install itself because a web page or search result was opened.</p>
+  <h2>Check the setup</h2>
+  <pre><code>python -m pip install --upgrade lybrary
+lybrary start
+lybrary status</code></pre>
+  <p>Run those commands inside the intended repository. <code>lybrary start</code> creates its <code>.lybrary/</code> index and starts a background watcher. After registering the MCP server, start a fresh agent session and call <code>memory_status</code> to verify the repository path and chunk count. Then call <code>memory_query</code> for a code question and inspect the returned source paths and lines.</p>
+  <p>Follow the client-specific registration guide for <a href="codex.html">Codex</a> or <a href="claude-code.html">Claude Code</a>. Claude Code can install Lybrary's GitHub plugin to register the MCP server; Codex can register it with <code>codex mcp add</code>. Installing the Python package alone does not register the MCP server with an agent.</p>
+  <h2>What is indexed?</h2>
+  <p>Each repository gets its own local index. Lybrary indexes functions, classes, and file-level code in Python, JavaScript, TypeScript, TSX, Go, Rust, Java, C, and C++. You can change indexed paths, languages, chunk sizes, and model settings in <code>.lybrary/config.toml</code>. Run <code>lybrary stop</code> in that repository to stop its watcher.</p>
+  <p>See the <a href="token-usage.html">measurement guide</a> for evaluating complete agent tasks. Lybrary may reduce repeated broad file reads, but token savings depend on the question and the agent's behavior.</p>
+</main>
+<footer><a href="./">Lybrary</a> · <a href="https://pypi.org/project/lybrary/">PyPI</a> · <a href="https://github.com/vibhu-dixit/lybrary">Source</a></footer>
+</body>
+</html>

@@ -9,6 +9,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.3.2] — 2026-10-12
+
+### Added
+- An agent-facing setup guide that identifies the published package and verifies a per-repository install.
+- Codex and Claude Code plugin marketplaces with a small setup skill for agents asked to enable local codebase memory.
+
+### Changed
+- Clarified discovery metadata and homepage wording for repository code search and coding agents.
+
+---
+
 ## [0.3.1] — 2026-10-12
 
 ### Changed

@@ -9,10 +9,10 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header><a class="brand" href="./">lybrary</a><nav aria-label="Main navigation"><a href="codex.html">Codex</a><a href="claude-code.html">Claude Code</a><a href="token-usage.html">Token usage</a><a href="https://github.com/vibhu-dixit/lybrary">GitHub</a></nav></header>
+<header><a class="brand" href="./">lybrary</a><nav aria-label="Main navigation"><a href="agent-setup.html">Agent setup</a><a href="codex.html">Codex</a><a href="claude-code.html">Claude Code</a><a href="token-usage.html">Token usage</a><a href="https://github.com/vibhu-dixit/lybrary">GitHub</a></nav></header>
 <main>
   <p class="eyebrow">Local codebase memory · MCP server</p>
-  <h1>Give your coding agent a map of your codebase.</h1>
+  <h1>Local codebase memory and code search for AI coding agents.</h1>
   <p class="lead">Lybrary indexes functions, classes, and files in each repository. Agents can query compact, line-numbered results, then inspect only the source they need.</p>
   <div class="actions"><a class="button primary" href="#start">Get started</a><a class="button" href="https://pypi.org/project/lybrary/">View on PyPI</a></div>
   <div class="grid">
@@ -28,6 +28,7 @@ lybrary status</code></pre>
   <p>The daemon continues after the terminal closes. Use <code>lybrary stop</code> in that repository when you want to stop watching it.</p>
   <h2>Connect your agent</h2>
   <p>Register Lybrary once with your MCP client, then start the agent inside an indexed repository. Follow the setup guide for <a href="codex.html">Codex</a> or <a href="claude-code.html">Claude Code</a>.</p>
+  <p>If you ask an agent to set this up for you, share the <a href="agent-setup.html">agent setup guide</a>. It links the official package and source, then shows how to verify the installation and active index.</p>
   <p class="note">MCP registration makes the tools available. A short instruction in <code>AGENTS.md</code> or <code>CLAUDE.md</code> helps the agent call <code>memory_query</code> before broad searches.</p>
   <h2>Where it can save context</h2>
   <p>A compact result points to a symbol, file, and relevant lines, so an agent may avoid opening several unrelated files. It still inspects current source before editing. Savings vary by task and agent behavior; <a href="token-usage.html">measure complete runs</a> to assess the effect in your repo.</p>

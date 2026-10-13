@@ -4,7 +4,9 @@ Lybrary indexes a repository by code structure and gives Codex, Claude Code, and
 
 <!-- mcp-name: io.github.vibhu-dixit/lybrary -->
 
-[PyPI](https://pypi.org/project/lybrary/) · [Documentation](https://vibhu-dixit.github.io/lybrary/) · [Source](https://github.com/vibhu-dixit/lybrary) · [Issues](https://github.com/vibhu-dixit/lybrary/issues)
+[PyPI](https://pypi.org/project/lybrary/) · [Documentation](https://vibhu-dixit.github.io/lybrary/) · [Agent setup guide](https://vibhu-dixit.github.io/lybrary/agent-setup.html) · [Source](https://github.com/vibhu-dixit/lybrary) · [Issues](https://github.com/vibhu-dixit/lybrary/issues)
+
+If you want a coding agent to set this up, ask it to **find and install a local MCP code search tool for the repository** and point it to the [agent setup guide](https://vibhu-dixit.github.io/lybrary/agent-setup.html). The guide identifies the PyPI package, source repository, install command, and checks that confirm the agent is using this repo's index.
 
 ## Start in any repository
 
@@ -27,6 +29,15 @@ Register the MCP server once on your machine. Start your agent in an indexed rep
 
 ### Codex
 
+Codex users can install Lybrary's setup skill from the repository's plugin marketplace:
+
+```bash
+codex plugin marketplace add vibhu-dixit/lybrary
+codex plugin add lybrary@lybrary
+```
+
+The plugin helps with setup; register the local MCP server separately:
+
 ```bash
 codex mcp add lybrary -- lybrary mcp
 codex mcp list
@@ -39,6 +50,15 @@ When .lybrary/index.db exists, use Lybrary memory_query before broad code search
 ```
 
 ### Claude Code
+
+Claude Code users can install the repository's plugin, which registers the MCP server and includes a setup skill:
+
+```bash
+claude plugin marketplace add vibhu-dixit/lybrary
+claude plugin install lybrary@lybrary
+```
+
+The Python package must also be installed with `pip install lybrary`. Or register the MCP server directly without the plugin:
 
 ```bash
 claude mcp add --scope user --transport stdio lybrary -- lybrary mcp

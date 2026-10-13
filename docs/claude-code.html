@@ -19,7 +19,11 @@
 cd /path/to/your/repo
 lybrary start
 lybrary status</code></pre>
-  <h2>2. Register once for your user</h2>
+  <h2>2. Connect Claude Code</h2>
+  <p>Install the Lybrary plugin from its GitHub marketplace. It registers <code>lybrary mcp</code> and includes a setup skill:</p>
+  <pre><code>claude plugin marketplace add vibhu-dixit/lybrary
+claude plugin install lybrary@lybrary</code></pre>
+  <p>Or register the MCP server directly without the plugin:</p>
   <pre><code>claude mcp add --scope user --transport stdio lybrary -- lybrary mcp
 claude mcp list</code></pre>
   <p>Start Claude Code inside the indexed repository. Use <code>/mcp</code> to inspect the connection, then ask it to call <code>memory_status</code>.</p>

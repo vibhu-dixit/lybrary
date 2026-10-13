@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "lybrary": {
+      "command": "lybrary",
+      "args": ["mcp"]
+    }
+  }
+}

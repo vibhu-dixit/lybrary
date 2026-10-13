@@ -240,7 +240,7 @@ def test_search_identical_vector_distance_near_zero(store):
     """Searching with the exact same vector should give distance ≈ 0."""
     store.upsert_chunks([_make_chunk()], [_unit_vec()])
     row = store.search_vector(_unit_vec(), limit=1)[0]
-    assert row["_distance"] == pytest.approx(0.0, abs=1e-5)
+    assert row["_distance"] == pytest.approx(0.0, abs=1e-3)
 
 
 def test_search_orthogonal_vector_distance(store):

@@ -315,6 +315,51 @@ def test_search_text_prefers_content_covering_more_terms_than_generic_symbol(sto
     assert results[0]["path"] == "attachment.ts"
 
 
+def test_fts_index_tracks_chunk_replacement_and_deletion(store):
+    original = _make_chunk(content="calendar invitation", symbol="invite")
+    store.upsert_chunks([original], [_unit_vec()])
+    assert store._conn.execute(
+        "SELECT COUNT(*) FROM chunks_fts WHERE chunks_fts MATCH 'calendar'"
+    ).fetchone()[0] == 1
+
+    replacement = _make_chunk(content="refund decision", symbol="invite")
+    store.upsert_chunks([replacement], [_unit_vec()])
+    assert store.search_text(["calendar"]) == []
+    assert [row["symbol"] for row in store.search_text(["refund"])] == ["invite"]
+
+    store.delete_path("src/foo.py")
+    assert store.search_text(["refund"]) == []
+
+
+def test_existing_index_without_fts_remains_searchable_and_migrates(tmp_path):
+    writer = IndexStore(tmp_path)
+    writer.upsert_chunks([_make_chunk(content="calendar invitation")], [_unit_vec()])
+    for name in ("chunks_fts_insert", "chunks_fts_delete", "chunks_fts_update"):
+        writer._conn.execute(f"DROP TRIGGER {name}")
+    writer._conn.execute("DROP TABLE chunks_fts")
+    writer.close()
+
+    reader = IndexStore(tmp_path, read_only=True)
+    assert len(reader.search_text(["calendar"])) == 1
+    reader.close()
+
+    migrated = IndexStore(tmp_path)
+    assert migrated._conn.execute(
+        "SELECT COUNT(*) FROM chunks_fts WHERE chunks_fts MATCH 'calendar'"
+    ).fetchone()[0] == 1
+    migrated.close()
+
+
+def test_fts_matches_promotion_to_promote_symbol(store):
+    store.upsert_chunks(
+        [_make_chunk(symbol="save_and_promote", content="if evaluation passed: active = True")],
+        [_unit_vec()],
+    )
+    assert [row["symbol"] for row in store.search_text(["promotion"])] == [
+        "save_and_promote"
+    ]
+
+
 # ---------------------------------------------------------------------------
 # all_paths
 # ---------------------------------------------------------------------------

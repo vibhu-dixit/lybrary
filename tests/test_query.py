@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from lybrary.query import _distance_to_score, search
+from lybrary.query import _distance_to_score, query_terms, search
 
 _DIM = 384
 _UNIT_VEC = [1.0 / (_DIM ** 0.5)] * _DIM
@@ -217,6 +217,66 @@ def test_conceptual_query_blends_text_and_vector_results(repo):
         ]
         results = search(repo, "interview calendar attachment", limit=2)
     assert [row["symbol"] for row in results] == ["emailAttachment", "unrelated"]
+
+
+def test_strong_lexical_match_avoids_embedding_model(repo):
+    with (
+        patch("lybrary.query.IndexStore") as MockStore,
+        patch("lybrary.query.Embedder") as MockEmbedder,
+    ):
+        store = MockStore.return_value
+        store.search_symbol.return_value = []
+        store.search_text.return_value = [
+            _fake_row(
+                symbol="save_and_promote", path="harness_evolve.py",
+                content="candidate evaluation passed promotion active",
+            )
+        ]
+        results = search(repo, "candidate evaluation promotion", limit=3)
+    assert [row["symbol"] for row in results] == ["save_and_promote"]
+    MockEmbedder.assert_not_called()
+
+
+def test_long_flow_query_keeps_later_promotion_terms():
+    terms = query_terms(
+        "Trace how dashboard POST /api/run reaches final candidate evaluation "
+        "and Atlas promotion. What prevents a failed candidate from becoming active?"
+    )
+    assert "promotion" in terms
+    assert "active" in terms
+
+
+def test_lexical_flow_keeps_third_distinct_symbol_in_same_file(repo):
+    with (
+        patch("lybrary.query.IndexStore") as MockStore,
+        patch("lybrary.query.Embedder") as MockEmbedder,
+    ):
+        store = MockStore.return_value
+        store.search_symbol.return_value = []
+        store.search_text.return_value = [
+            _fake_row("run_evolution", "harness.py", "candidate evaluation active"),
+            _fake_row("get_dashboard_status", "harness.py", "dashboard active candidate"),
+            _fake_row("save_and_promote", "harness.py", "evaluation passed promotion active"),
+            _fake_row("do_POST", "dashboard.py", "POST /api/run"),
+        ]
+        results = search(repo, "dashboard POST candidate evaluation promotion active", limit=5)
+    assert "save_and_promote" in [row["symbol"] for row in results]
+    MockEmbedder.assert_not_called()
+
+
+def test_single_stemmed_lexical_hit_does_not_embed(repo):
+    with (
+        patch("lybrary.query.IndexStore") as MockStore,
+        patch("lybrary.query.Embedder") as MockEmbedder,
+    ):
+        store = MockStore.return_value
+        store.search_symbol.return_value = []
+        store.search_text.return_value = [
+            _fake_row("save_and_promote", "harness.py", "if evaluation passed: active = True")
+        ]
+        results = search(repo, "promotion")
+    assert [row["symbol"] for row in results] == ["save_and_promote"]
+    MockEmbedder.assert_not_called()
 
 
 def test_conceptual_results_limit_near_duplicates_from_one_file(repo):

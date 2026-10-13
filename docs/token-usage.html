@@ -27,7 +27,7 @@
   "Trace how an invitation email and calendar attachment are sent"</code></pre>
   <p>The script records runs with and without Lybrary under <code>.lybrary/benchmarks/</code>. Read both answers and traces. Compare answer correctness, total input tokens, cached and uncached input tokens, output tokens, and tool calls. Repeat with exact-symbol, cross-file, and unfamiliar-feature questions before drawing a general conclusion.</p>
   <h2>Tune your workflow</h2>
-  <p>Use <code>memory_query</code> for conceptual navigation, inspect only the returned source ranges, and use full content only when the compact excerpt is insufficient. In a repository's <code>AGENTS.md</code> or <code>CLAUDE.md</code>, tell the agent when to query Lybrary and when to fall back to ordinary search.</p>
+  <p>Use <code>memory_query</code> for code navigation, inspect only the returned source ranges, and query one named call again if the first result leaves a gap. Use full content only when a compact excerpt is insufficient. In a repository's <code>AGENTS.md</code> or <code>CLAUDE.md</code>, tell the agent when to query Lybrary and when to fall back to ordinary search.</p>
 </main>
 <footer><a href="./">Lybrary</a> · <a href="codex.html">Codex setup</a> · <a href="claude-code.html">Claude Code setup</a></footer>
 </body>

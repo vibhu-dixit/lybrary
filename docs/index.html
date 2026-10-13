@@ -32,7 +32,7 @@ lybrary status</code></pre>
   <h2>Where it can save context</h2>
   <p>A compact result points to a symbol, file, and relevant lines, so an agent may avoid opening several unrelated files. It still inspects current source before editing. Savings vary by task and agent behavior; <a href="token-usage.html">measure complete runs</a> to assess the effect in your repo.</p>
   <h2>Built for code</h2>
-  <p>Tree-sitter identifies code boundaries in Python, JavaScript, TypeScript, TSX, Go, Rust, Java, C, and C++. Search combines exact symbols, SQLite text matches, and local embeddings. You can use the CLI directly or the MCP tools <code>memory_query</code>, <code>memory_status</code>, and <code>memory_update</code>.</p>
+  <p>Tree-sitter identifies code boundaries in Python, JavaScript, TypeScript, TSX, Go, Rust, Java, C, and C++. Search starts with exact symbols and SQLite FTS5 text matches; local embeddings are a fallback when lexical evidence is weak. You can use the CLI directly or the MCP tools <code>memory_query</code>, <code>memory_status</code>, and <code>memory_update</code>.</p>
 </main>
 <footer><a href="https://github.com/vibhu-dixit/lybrary">Source</a> · <a href="https://github.com/vibhu-dixit/lybrary/issues">Issues</a> · <a href="https://pypi.org/project/lybrary/">PyPI</a> · MIT license</footer>
 </body>

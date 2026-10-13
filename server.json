@@ -3,7 +3,7 @@
   "name": "io.github.vibhu-dixit/lybrary",
   "title": "Lybrary",
   "description": "Local, configurable codebase memory for coding agents. Search indexed source through MCP.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "repository": {
     "url": "https://github.com/vibhu-dixit/lybrary",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "lybrary",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "transport": {
         "type": "stdio"
       }

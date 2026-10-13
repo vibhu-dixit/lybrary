@@ -50,6 +50,24 @@ CREATE TABLE IF NOT EXISTS chunks (
     vector         BLOB
 );
 CREATE INDEX IF NOT EXISTS idx_chunks_path ON chunks (path);
+CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
+    path, symbol, content, content='chunks', content_rowid='rowid',
+    tokenize='porter unicode61'
+);
+CREATE TRIGGER IF NOT EXISTS chunks_fts_insert AFTER INSERT ON chunks BEGIN
+    INSERT INTO chunks_fts(rowid, path, symbol, content)
+    VALUES (new.rowid, new.path, new.symbol, new.content);
+END;
+CREATE TRIGGER IF NOT EXISTS chunks_fts_delete AFTER DELETE ON chunks BEGIN
+    INSERT INTO chunks_fts(chunks_fts, rowid, path, symbol, content)
+    VALUES ('delete', old.rowid, old.path, old.symbol, old.content);
+END;
+CREATE TRIGGER IF NOT EXISTS chunks_fts_update AFTER UPDATE ON chunks BEGIN
+    INSERT INTO chunks_fts(chunks_fts, rowid, path, symbol, content)
+    VALUES ('delete', old.rowid, old.path, old.symbol, old.content);
+    INSERT INTO chunks_fts(rowid, path, symbol, content)
+    VALUES (new.rowid, new.path, new.symbol, new.content);
+END;
 """
 
 
@@ -88,7 +106,17 @@ class IndexStore:
         # WAL mode: faster writes, safe concurrent reads from watcher
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
+        fts_row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE name = 'chunks_fts'"
+        ).fetchone()
+        if fts_row and "porter unicode61" not in fts_row[0]:
+            for name in ("chunks_fts_insert", "chunks_fts_delete", "chunks_fts_update"):
+                conn.execute(f"DROP TRIGGER IF EXISTS {name}")
+            conn.execute("DROP TABLE chunks_fts")
+            fts_row = None
         conn.executescript(_SCHEMA)
+        if not fts_row:
+            conn.execute("INSERT INTO chunks_fts(chunks_fts) VALUES ('rebuild')")
         conn.commit()
         return conn
 
@@ -242,26 +270,44 @@ class IndexStore:
             return []
         parts = []
         values: list[str | int] = []
-        for term in terms[:8]:
+        for term in terms[:12]:
             parts.append(
-                "(4 * (instr(lower(coalesce(symbol, '')), ?) > 0) + "
-                "(instr(lower(path), ?) > 0) + "
-                "4 * (instr(lower(content), ?) > 0))"
+                "(4 * (instr(lower(coalesce(chunks.symbol, '')), ?) > 0) + "
+                "(instr(lower(chunks.path), ?) > 0) + "
+                "4 * (instr(lower(chunks.content), ?) > 0))"
             )
             values.extend((term, term, term))
         score = " + ".join(parts)
-        rows = self._conn.execute(
-            f"""
-            SELECT * FROM (
-                SELECT id, path, symbol, kind, start_line, end_line,
-                       content, context_header, ({score}) AS lexical_score
-                FROM chunks
-            ) WHERE lexical_score > 0
-            ORDER BY lexical_score DESC, path
-            LIMIT ?
-            """,
-            [*values, limit],
-        ).fetchall()
+        has_fts = self._conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE name = 'chunks_fts'"
+        ).fetchone() is not None
+        fts_query = " OR ".join('"' + term.replace('"', '""') + '"' for term in terms[:12])
+        if has_fts:
+            rows = self._conn.execute(
+                f"""
+                SELECT chunks.id, chunks.path, chunks.symbol, chunks.kind,
+                       chunks.start_line, chunks.end_line, chunks.content,
+                       chunks.context_header, ({score}) AS lexical_score
+                FROM chunks_fts JOIN chunks ON chunks.rowid = chunks_fts.rowid
+                WHERE chunks_fts MATCH ?
+                ORDER BY bm25(chunks_fts, 2.0, 8.0, 1.0), lexical_score DESC, chunks.path
+                LIMIT ?
+                """,
+                [*values, fts_query, limit],
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                f"""
+                SELECT * FROM (
+                    SELECT id, path, symbol, kind, start_line, end_line,
+                           content, context_header, ({score}) AS lexical_score
+                    FROM chunks
+                ) WHERE lexical_score > 0
+                ORDER BY lexical_score DESC, path
+                LIMIT ?
+                """,
+                [*values, limit],
+            ).fetchall()
         return [dict(row) for row in rows]
 
     def all_paths(self) -> set[str]:

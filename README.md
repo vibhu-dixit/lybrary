@@ -51,7 +51,7 @@ For another stdio MCP client, configure command `lybrary` with argument `mcp`. S
 
 ## What the agent gets
 
-`memory_query` blends exact symbol, SQLite text, and vector search. Its default response gives ranked paths, symbols, line ranges, and compact numbered excerpts. The agent can then inspect the relevant source lines. Set `include_content=true` when a full chunk is needed.
+`memory_query` checks exact symbols and an SQLite FTS5 index first. Strong lexical matches avoid loading the embedding model; semantic search remains a fallback when wording does not match the code. Its default response gives ranked paths, symbols, line ranges, and compact numbered excerpts. If a trace crosses a named call missing from the first result, query that symbol once. Set `include_content=true` when a full chunk is needed.
 
 `memory_status` reports the active repository and index health. `memory_update` triggers incremental, full, or path-scoped re-indexing.
 

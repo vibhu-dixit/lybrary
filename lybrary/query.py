@@ -12,15 +12,21 @@ from lybrary.indexer.store import IndexStore
 
 _STOPWORDS = {
     "and", "are", "code", "does", "file", "find", "for", "from", "how",
-    "into", "line", "lines", "that", "the", "this", "trace", "what",
-    "where", "which", "with",
+    "becoming", "into", "line", "lines", "prevents", "reaches", "that",
+    "the", "this", "trace", "what", "where", "which", "with",
 }
 
 
 def query_terms(query: str) -> list[str]:
     """Keep distinctive words for lexical search and source excerpts."""
-    words = re.findall(r"[A-Za-z][A-Za-z0-9_]*", query.lower())
-    return list(dict.fromkeys(w for w in words if len(w) >= 3 and w not in _STOPWORDS))[:8]
+    split_names = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", query)
+    words = re.findall(r"[A-Za-z][A-Za-z0-9]*", split_names.lower())
+    return list(dict.fromkeys(w for w in words if len(w) >= 3 and w not in _STOPWORDS))[:12]
+
+
+def _lexical_coverage(row: dict[str, Any], terms: list[str]) -> int:
+    text = " ".join(str(row.get(key) or "") for key in ("path", "symbol", "content")).lower()
+    return sum(term in text for term in terms)
 
 
 def _distance_to_score(distance: float) -> float:
@@ -45,7 +51,7 @@ def search(
     limit: int = 8,
     max_tokens: int | None = 6000,
 ) -> list[dict[str, Any]]:
-    """Exact symbol lookup or semantic search with optional token-budget packing.
+    """Exact symbol or lexical-first search with semantic fallback.
 
     Returns results sorted by descending relevance score.
     Each result dict contains: id, path, symbol, kind, start_line,
@@ -59,25 +65,34 @@ def search(
     try:
         raw = store.search_symbol(identifier, limit=limit * 2) if identifier else []
         text_match = bool(raw)
+        lexical_only = False
+        terms = query_terms(query)
         if not raw:
-            lexical = store.search_text(query_terms(query), limit=limit * 3)
-            config = LybraryConfig.load(root)
-            embedder = Embedder(config.embed.model, config.embed.device)
-            semantic = store.search_vector(embedder.embed_query(query), limit=limit * 3)
-            if lexical:
-                combined: dict[str, dict[str, Any]] = {}
-                for rows, weight in ((semantic, 1.0), (lexical, 1.2)):
-                    for rank, row in enumerate(rows, 1):
-                        key = row["id"]
-                        if key not in combined:
-                            combined[key] = dict(row)
-                            combined[key]["_hybrid_score"] = 0.0
-                        combined[key]["_hybrid_score"] += weight / rank / 2.2
-                raw = sorted(
-                    combined.values(), key=lambda row: row["_hybrid_score"], reverse=True
-                )
+            lexical = store.search_text(terms, limit=limit * 3)
+            required = min(3, (len(terms) + 1) // 2)
+            if lexical and (len(terms) == 1 or any(
+                _lexical_coverage(row, terms) >= required for row in lexical[:5]
+            )):
+                raw = lexical
+                lexical_only = True
             else:
-                raw = semantic
+                config = LybraryConfig.load(root)
+                embedder = Embedder(config.embed.model, config.embed.device)
+                semantic = store.search_vector(embedder.embed_query(query), limit=limit * 3)
+                if lexical:
+                    combined: dict[str, dict[str, Any]] = {}
+                    for rows, weight in ((semantic, 1.0), (lexical, 1.2)):
+                        for rank, row in enumerate(rows, 1):
+                            key = row["id"]
+                            if key not in combined:
+                                combined[key] = dict(row)
+                                combined[key]["_hybrid_score"] = 0.0
+                            combined[key]["_hybrid_score"] += weight / rank / 2.2
+                    raw = sorted(
+                        combined.values(), key=lambda row: row["_hybrid_score"], reverse=True
+                    )
+                else:
+                    raw = semantic
     finally:
         store.close()
 
@@ -86,7 +101,7 @@ def search(
     per_path: dict[str, int] = {}
     for row in raw:
         path = row.get("path", "")
-        if not text_match and per_path.get(path, 0) >= 2:
+        if not text_match and per_path.get(path, 0) >= (3 if lexical_only else 2):
             continue
         content = row.get("content", "")
         approx = max(1, len(content) // 4)
@@ -104,8 +119,11 @@ def search(
                 "context_header": row.get("context_header"),
                 # Fix #11: use proper cosine-similarity score
                 "score": (
-                    1.0 if text_match else row.get(
+                    1.0 if text_match else (
+                        max(1, _lexical_coverage(row, terms)) / max(1, len(terms))
+                        if lexical_only else row.get(
                         "_hybrid_score", _distance_to_score(row.get("_distance", 2.0))
+                        )
                     )
                 ),
             }

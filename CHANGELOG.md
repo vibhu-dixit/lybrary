@@ -9,6 +9,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.3.1] — 2026-10-12
+
+### Changed
+- Search indexed chunks with SQLite FTS5 first; load the embedding model only when lexical matches are weak.
+- Preserve relevant results from the same file and guide agents to follow a named call with a second compact query when needed.
+- Upgrade existing indexes to the FTS5 format when the writer opens them; old indexes remain readable before migration.
+
+---
+
 ## [0.3.0] — 2026-10-12
 
 ### Added

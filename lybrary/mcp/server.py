@@ -1,7 +1,7 @@
 """MCP server exposing lybrary tools to AI agents.
 
 Exposes three tools:
-  - memory_query    : semantic search over the indexed code memory
+  - memory_query    : lexical-first search over the indexed code memory
   - memory_status   : daemon/index health check
   - memory_update   : trigger incremental (or full) re-index
 
@@ -27,9 +27,9 @@ from lybrary.indexer.store import IndexStore
 mcp = FastMCP(
     "lybrary_mcp",
     instructions=(
-        "Use memory_query to locate code for conceptual questions, then inspect only "
-        "the relevant source lines. Exact known symbols can be found with text search. "
-        "Prefer one compact query; request full content only when needed."
+        "Use memory_query to locate code, then inspect the relevant source lines. "
+        "If a trace crosses a named call missing from the first result, query that "
+        "symbol once. Request full content only when compact excerpts are insufficient."
     ),
 )
 
@@ -226,9 +226,10 @@ class UpdateInput(BaseModel):
     },
 )
 async def memory_query(params: QueryInput) -> str:
-    """Locate code using exact symbol lookup or semantic search.
+    """Locate code with exact symbols, lexical search, then semantic fallback.
 
     Returns compact locations with line-numbered source excerpts by default.
+    Follow a named call with another compact query if the first result leaves a gap.
     Set include_content for full function/class bodies when needed.
 
     Args:

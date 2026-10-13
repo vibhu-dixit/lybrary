@@ -32,4 +32,5 @@ async def test_stdio_server_exposes_memory_tools(tmp_path: Path):
             status = await session.call_tool(
                 "memory_status", {"params": {"repo_root": str(tmp_path)}}
             )
-            assert '"chunks": 0' in status.content[0].text
+            assert '"index_error": "unable to open database file"' in status.content[0].text
+            assert not (tmp_path / ".lybrary").exists()

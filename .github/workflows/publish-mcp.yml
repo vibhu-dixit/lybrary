@@ -2,11 +2,14 @@ name: Publish to MCP Registry
 
 on:
   workflow_dispatch:
-  release:
-    types: [published]
+  # The release workflow creates GitHub Releases with GITHUB_TOKEN.
+  workflow_run:
+    workflows: ["Release to PyPI"]
+    types: [completed]
 
 jobs:
   publish:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -14,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
       - name: Install publisher
         run: |
           curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher

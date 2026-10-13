@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- Trigger MCP Registry publication after a successful PyPI release workflow, including releases created with GitHub Actions.
+
 ---
 
 ## [0.3.2] — 2026-10-12
